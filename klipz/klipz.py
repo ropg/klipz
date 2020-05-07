@@ -1,4 +1,5 @@
 import argparse, pkg_resources, sys, time
+import tempfile, subprocess, os, re
 import pyperclip
 import curses
 import signal
@@ -11,6 +12,7 @@ def command_line_arguments():
 
 def main():
     ap = command_line_arguments()
+    global cmdline
     cmdline = ap.parse_args()
 
     if cmdline.version:
@@ -22,14 +24,24 @@ def main():
 def worker(screen):
 
     doing_signals = False
+    curses.use_default_colors()
+    screen.timeout(0)
+    screen.leaveok(0)
+    clips = []
+    selected = 0
+    compare = ""
 
     def handle_resize(signum, frame):
         nonlocal doing_signals
+        if signum or frame:
+            doing_signals = True
         curses.endwin()
         screen = curses.initscr()
         screen.clear()
         curses.resizeterm(*screen.getmaxyx())
         redraw()
+
+    signal.signal(signal.SIGWINCH, handle_resize)
 
     def redraw():
         screen.clear()
@@ -41,7 +53,7 @@ def worker(screen):
                 curses.LINES - 1 - index,
                 0,
                 display_string,
-                curses.A_NORMAL if index != selected else curses.A_REVERSE
+                curses.A_REVERSE if index == selected else curses.A_NORMAL
             )
             index += 1
         screen.move(curses.LINES - 1 - selected, 0)
@@ -52,13 +64,19 @@ def worker(screen):
         nonlocal compare
         compare = s
 
-    signal.signal(signal.SIGWINCH, handle_resize)
-    curses.use_default_colors()
-    screen.timeout(0)
-    screen.leaveok(0)
-    clips = []
-    selected = 0
-    compare = ""
+    def up():
+        nonlocal selected, clips
+        if selected < len(clips) - 1:
+            selected += 1
+            copy_to_clipboard(clips[selected])
+            redraw()
+
+    def down():
+        nonlocal selected, clips
+        if selected > 0:
+            selected -= 1
+            copy_to_clipboard(clips[selected])
+            redraw()
 
     redraw()
     while True:
@@ -66,13 +84,29 @@ def worker(screen):
             key = screen.getch()
             if key == curses.KEY_RESIZE and not doing_signals:
                 handle_resize(None, None)
-            if key == curses.KEY_UP and selected < len(clips) - 1:
-                selected += 1
-                copy_to_clipboard(clips[selected])
-                redraw()
-            if key == curses.KEY_DOWN and selected > 0:
-                selected -= 1
-                copy_to_clipboard(clips[selected])
+            if key == curses.KEY_UP:
+                up()
+            if key == curses.KEY_DOWN:
+                down()
+            if key == ord("e"):
+                editor = os.environ.get('EDITOR', None)
+                if editor:
+                    with tempfile.NamedTemporaryFile(suffix=".tmp") as tf:
+                        tf.write(clips[selected].encode("utf-8"))
+                        tf.flush()
+                        subprocess.call([editor, tf.name])
+                        tf.seek(0)
+                        clips[selected] = tf.read().decode("utf-8")
+                        copy_to_clipboard(clips[selected])
+                        handle_resize(None, None)
+            if key == ord("n"):
+                s = clips[selected]
+                s = re.sub('[«»„“‟”❝❞⹂〝〞〟＂]', '"', s)
+                s = re.sub('[‹›’‚‘‛❛❜❟]', "'", s)
+                s = s.replace('—', '-')
+                s = s.replace('\n', '  ')
+                clips[selected] = s
+                copy_to_clipboard(s)
                 redraw()
             if key == -1:
                 break
