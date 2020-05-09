@@ -123,12 +123,6 @@ def redraw():
             )
         except:
             pass
-#             screen.addstr(
-#                 curses.LINES - 1 - index + bottom,
-#                 0,
-#                 "<problem displaying here>",
-#                 curses.A_REVERSE if index == selected else curses.A_NORMAL,
-#             )
         index += 1
     screen.move(curses.LINES - 1 - selected + bottom, 0)
     screen.refresh()
