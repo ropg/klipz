@@ -1,16 +1,10 @@
 import setuptools
-import re
 from distutils.core import setup
-
-# read the contents of your README file
-from os import path
-
-this_directory = path.abspath(path.dirname(__file__))
 
 setup(
     name="klipz",
-    version="0.0.1",
-    description="Encrypted pastebuffer sharing between machines",
+    version="0.1.1",
+    description="Clipboard history, manipulation of individual clippings.",
     long_description="",
     url="https://github.com/ropg/klipz",
     author="Rop Gonggrijp",
@@ -26,14 +20,12 @@ setup(
     python_requires=">=3",
     setup_requires=["wheel"],
     install_requires=[
-#        "pyqt5==5.14.0",
 		"pyperclip",
     ],
     entry_points={
         "console_scripts": [
             # command = package.module:function
             "klipz = klipz.klipz:main",
-            "klipzd = klipz.klipzd:main",
         ],
     },
 )
