@@ -9,18 +9,19 @@ setup(
     url="https://github.com/ropg/klipz",
     author="Rop Gonggrijp",
     license="MIT",
-    classifiers=["Development Status :: 3 - Alpha", "Programming Language :: Python :: 3",],
+    classifiers=["Development Status :: 3 - Alpha",
+                 "Programming Language :: Python :: 3"],
     keywords="copy, paste, clipboard",
     project_urls={
         "Documentation": "https://github.com/ropg/klipz/README.md",
         "Source": "https://github.com/ropg/klipz",
         "Tracker": "https://github.com/ropg/klipz/issues",
     },
-    packages=["klipz",],
+    packages=["klipz"],
     python_requires=">=3",
     setup_requires=["wheel"],
     install_requires=[
-		"pyperclip",
+        "pyperclip",
     ],
     entry_points={
         "console_scripts": [
