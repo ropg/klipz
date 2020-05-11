@@ -6,12 +6,11 @@ import pkg_resources
 import pyperclip
 import re
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
 import time
-
-# import socket
 
 # consts
 SAVED_HEADER = "Saved Clippings"
@@ -166,7 +165,6 @@ def execute_function(tuple):
         args.pop(0)
         displayed[selected] = clip
         copy_to_clipboard(clip)
-        offset_in_clip = 0
         redraw()
 
 
@@ -179,7 +177,6 @@ def handle_resize(signum, frame):
     screen.clear()
     curses.resizeterm(*screen.getmaxyx())
     bottom = max(0, selected - curses.LINES + 1)
-    offset_in_clip = 0
     redraw()
 
 
@@ -277,7 +274,8 @@ def move_up():
         redraw()
     elif selected < len(saved_clips) - 1:
         saved_clips[selected + 1], saved_clips[selected] = \
-            saved_clips[selected], saved_clips[selected + 1] selected += 1
+            saved_clips[selected], saved_clips[selected + 1]
+        selected += 1
         redraw()
 
 
