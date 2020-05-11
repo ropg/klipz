@@ -79,7 +79,7 @@ def saved_from_disk():
             del saved_clips[:]
             saved_clips.extend(ast.literal_eval(f.read().decode("utf-8")))
     except:
-        raise
+        pass
 
 def worker(scr):
     global compare, clips, selected, screen
