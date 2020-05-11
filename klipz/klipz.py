@@ -1,5 +1,6 @@
 """
-klipz is a python module for saving clippings.
+klipz creates the command line program "klipz", a character-based clipboard
+manager using curses.
 """
 import argparse
 import ast
@@ -36,8 +37,8 @@ quitting = False
 
 def command_line_arguments():
     """
-    This has to be in a separate function for the automatic documentation to
-    work.
+    This has to be in a separate function for the argparse plugin for the
+    sphinx automatic documentation to work.
     """
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", "-v", help="Print version number and exit.",
@@ -57,7 +58,7 @@ def command_line_arguments():
 
 def main():
     """
-    the primary klipz entry point
+    Primary klipz entry point
     """
     global cmdline
     ap = command_line_arguments()
@@ -73,7 +74,7 @@ def main():
 
 def register_default_keys():
     """
-    register map of hotkeys to functions.
+    Register map of keys to functions.
     """
     register_key("e", call_editor)
     register_key("s", toggle_saved, None)
@@ -87,7 +88,7 @@ def register_default_keys():
 
 def read_config_file():
     """
-    read klipz configuration file.
+    Read klipz configuration file.
     """
     try:
         exec(open(os.path.expanduser(cmdline.configdir + "/config.py")).read())
@@ -179,7 +180,7 @@ def execute_function(tuple):
     """
     Execute a given function.
     """
-    global displayed
+    global displayed, offset_in_clip
     if not tuple:
         return
     (func, args) = tuple
@@ -201,7 +202,7 @@ def handle_resize(signum, frame):
     """
     *handle_resize* is used for handling a terminal resize.
     """
-    global SIGWINCH_works, screen, bottom
+    global SIGWINCH_works, screen, bottom, offset_in_clip
     if signum or frame:
         SIGWINCH_works = True
     curses.endwin()

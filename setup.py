@@ -3,7 +3,7 @@ from distutils.core import setup
 
 setup(
     name="klipz",
-    version="0.1.5",
+    version="0.1.6dev",
     description="Clipboard history, manipulation of individual clippings.",
     long_description="",
     url="https://github.com/ropg/klipz",
