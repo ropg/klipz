@@ -1,8 +1,15 @@
-import argparse, pkg_resources, sys, time
-import tempfile, subprocess, os, re, ast
-import pyperclip
+import argparse
+import ast
 import curses
+import os
+import pkg_resources
+import pyperclip
+import re
 import signal
+import subprocess
+import sys
+import tempfile
+import time
 
 # import socket
 
@@ -24,18 +31,25 @@ registered_keys = {}
 SIGWINCH_works = False
 quitting = False
 
-# This has to be in a separate function for the automatic documentation to work.
+
 def command_line_arguments():
+    """
+    This has to be in a separate function for the automatic documentation to
+    work.
+    """
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", "-v", help="Print version number and exit.", action="store_true")
-    ap.add_argument("--configdir", "-c", help="Location of the klipz config directory.", default="~/.klipz")
-    ap.add_argument(
-        "--leavecrlf",
-        help="By default, klipz removes beginning and ending carriage returns and line feeds from the"
-        "beginning and ending of all clips. Use this option if you do not want that.",
-        action="store_true",
-    )
-    ap.add_argument("--scrollback", "-s", help="Number of clips in scrollback buffer.", type=int, default=100)
+    ap.add_argument("--version", "-v", help="Print version number and exit.",
+                    action="store_true")
+    ap.add_argument("--configdir", "-c", help="Location of the klipz config" +
+                    "directory.", default="~/.klipz")
+    ap.add_argument("--leavecrlf", help="By default, klipz removes beginning" +
+                    "and ending carriage returns " +
+                    "and line feeds from the beginning and ending of all" +
+                    "clips. Use this option if you do not want that.",
+                    action="store_true")
+    ap.add_argument("--scrollback", "-s",
+                    help="Number of clips in scrollback buffer.", type=int,
+                    default=100)
     return ap
 
 
@@ -51,6 +65,7 @@ def main():
     saved_from_disk()
     curses.wrapper(worker)
 
+
 def register_default_keys():
     register_key("e", call_editor)
     register_key("s", toggle_saved, None)
@@ -61,11 +76,13 @@ def register_default_keys():
     register_key(curses.KEY_LEFT, scroll_left, None)
     register_key(curses.KEY_RIGHT, scroll_right, None)
 
+
 def read_config_file():
     try:
         exec(open(os.path.expanduser(cmdline.configdir + "/config.py")).read())
     except FileNotFoundError:
         pass
+
 
 def saved_to_disk():
     try:
@@ -73,19 +90,23 @@ def saved_to_disk():
     except FileExistsError:
         pass
     try:
-        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"), "wb") as f:
+        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"),
+                  "wb") as f:
             f.write(repr(saved_clips).encode("utf-8"))
-    except:
+    except OSError:
         pass
+
 
 def saved_from_disk():
     global saved_clips
     try:
-        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"), "rb") as f:
+        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"),
+                  "rb") as f:
             del saved_clips[:]
             saved_clips.extend(ast.literal_eval(f.read().decode("utf-8")))
-    except:
+    except OSError:
         pass
+
 
 def worker(scr):
     global compare, displayed, selected, screen
@@ -124,16 +145,18 @@ def worker(scr):
         except:
             pass
 
-def quit(signum = None, frame = None):
+
+def quit(signum=None, frame=None):
     global quitting
     quitting = True
+
 
 def execute_function(tuple):
     global displayed
     if not tuple:
         return
     (func, args) = tuple
-    if args == None:
+    if args is None:
         func()
     else:
         if type(args) == str:
@@ -167,7 +190,8 @@ def redraw():
     index = curses.LINES + bottom
     if saved_clips is displayed:
         screen.addstr(0, 0, " " * width, curses.A_REVERSE)
-        screen.addstr(0, int((width / 2) - (len(SAVED_HEADER) / 2)), SAVED_HEADER, curses.A_REVERSE)
+        screen.addstr(0, int((width / 2) - (len(SAVED_HEADER) / 2)),
+                      SAVED_HEADER, curses.A_REVERSE)
         index -= 1
     while index > bottom:
         index -= 1
@@ -181,8 +205,9 @@ def redraw():
             cursor_state = curses.A_REVERSE
             screen.addnstr(current_line, 0, " " * width, width, cursor_state)
         try:
-            # May throw exception and even wrap ugly on non-fixed-width chars (e.g. emoticons).
-            # Since we do not control terminal or font there is simply nothing we can do about it.
+            # May throw exception and even wrap ugly on non-fixed-width chars
+            # (e.g. emoticons).  Since we do not control terminal or font there
+            # is simply nothing we can do about it.
             screen.addnstr(current_line, 0, disp, width, cursor_state)
         except:
             pass
@@ -235,7 +260,8 @@ def move_down():
     if pastes is displayed:
         return
     if selected > 0:
-        saved_clips[selected - 1], saved_clips[selected] = saved_clips[selected], saved_clips[selected - 1]
+        saved_clips[selected - 1], saved_clips[selected] = \
+            saved_clips[selected], saved_clips[selected - 1]
         selected -= 1
         redraw()
 
@@ -250,8 +276,8 @@ def move_up():
         selected = 1
         redraw()
     elif selected < len(saved_clips) - 1:
-        saved_clips[selected + 1], saved_clips[selected] = saved_clips[selected], saved_clips[selected + 1]
-        selected += 1
+        saved_clips[selected + 1], saved_clips[selected] = \
+            saved_clips[selected], saved_clips[selected + 1] selected += 1
         redraw()
 
 
@@ -303,7 +329,8 @@ def pass_as_tempfile(clip, command_and_args):
 def pipe_through(clip, command_and_args):
     if type(command_and_args) == str:
         command_and_args = [command_and_args]
-    p = subprocess.Popen(command_and_args, stdout=subprocess.PIPE, stdin=subprocess.PIPE, shell=True)
+    p = subprocess.Popen(command_and_args, stdout=subprocess.PIPE,
+                         stdin=subprocess.PIPE, shell=True)
     s = p.communicate(input=clip.encode("utf-8"))[0].decode("utf-8")
     return cutcrlf(s)
 
