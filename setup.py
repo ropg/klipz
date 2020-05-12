@@ -1,11 +1,14 @@
 import setuptools
 from distutils.core import setup
 
+with open('README.rst', encoding="utf-8") as f:
+    readme = f.read()
+
 setup(
     name="klipz",
-    version="0.1.6dev",
-    description="Clipboard history, manipulation of individual clippings.",
-    long_description="",
+    version="0.1.6",
+    description="Clipboard manager using curses",
+    long_description=readme,
     url="https://github.com/ropg/klipz",
     author="Rop Gonggrijp",
     license="MIT",

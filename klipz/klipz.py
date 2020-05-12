@@ -1,6 +1,11 @@
 """
-klipz creates the command line program "klipz", a character-based clipboard
-manager using curses.
+Running klipz from the command line will present a character-based clipboard
+manager using curses. The user can scroll through past clips and save some
+to a special "Saved Clippings" screen. Lots of other features, and great
+configurability through a config file that can have python functions in it.
+
+Install with "pip install klipz", see https://github.com/ropg/klipz for the
+documentation and issue tracker.
 """
 import argparse
 import ast
@@ -23,7 +28,7 @@ SAVED_HEADER = "Saved Clippings"
 screen = False
 width = 0
 compare = ""
-pastes = []
+pastes = [""]
 saved_clips = [""]
 displayed = pastes
 selected = 0
@@ -80,6 +85,7 @@ def register_default_keys():
     register_key("s", toggle_saved, None)
     register_key("u", move_up, None)
     register_key("d", move_down, None)
+    register_key("c", delete_clip, None)
     register_key(curses.KEY_UP, up, None)
     register_key(curses.KEY_DOWN, down, None)
     register_key(curses.KEY_LEFT, scroll_left, None)
@@ -139,46 +145,92 @@ def worker(scr):
     signal.signal(signal.SIGTERM, _quit)
     while not quitting:
         try:
-            while True:
-                key = screen.getch()
-                if key == curses.KEY_RESIZE and not SIGWINCH_works:
-                    handle_resize(None, None)
-                if key == -1:
-                    break
-                execute_function(registered_keys.get(key))
-            p = pyperclip.paste()
-            if p != cutcrlf(p):
-                p = cutcrlf(p)
-                pyperclip.copy(p)
-            if p and p != compare:
-                if saved_clips is displayed:
-                    toggle_saved()
-                pastes.insert(0, p)
-                if len(pastes) >= cmdline.scrollback:
-                    pastes.pop(-1)
-                selected = 0
-                compare = p
-                redraw()
-            else:
-                time.sleep(0.1)
+            poll_keys()
+            poll_clipboard()
+            time.sleep(0.1)
         except KeyboardInterrupt:
             _quit()
-        except:
-            pass
+
+
+def poll_keys():
+    """
+    Will handle keys until there are no more in the curses buffer. It will
+    look up the key in registered keys and call *execute_function*.
+    The .get will return None if the key is not in the dictionary, and
+    execute_function will just return if it gets that, so this needs not care
+    if the key exists or not.
+    """
+    key = 0
+    while key != -1:
+        key = screen.getch()
+        if key == curses.KEY_RESIZE and not SIGWINCH_works:
+            handle_resize()
+        execute_function(registered_keys.get(key))
+
+
+def poll_clipboard():
+    """
+    Will get the paste buffer, clip off and cr's and lf's if needed and
+    compare it to the global *compare* variable to see if we've seen it.
+    If not, store it in *pastes*, first switching back to the clipboard view
+    if we were in "Saved Clippings" view. Also manages maximum buffer size.
+    """
+    global selected, compare
+    p = pyperclip.paste()
+    if not p:
+        return
+    if p != cutcrlf(p):
+        p = cutcrlf(p)
+        pyperclip.copy(p)
+    if p != compare:
+        if saved_clips is displayed:
+            toggle_saved()
+        pastes.insert(0, p)
+        if len(pastes) >= cmdline.scrollback:
+            pastes.pop(-1)
+        selected = 0
+        compare = p
+        redraw()
 
 
 def _quit(signum=None, frame=None):
     """
     *_quit* is called by signal handlers as well as other callers who want to
-    exit.
+    exit. It causes the main loop in *worker* to end, which returns to main and
+    resets the terminal properly for non-curses use.
     """
     global quitting
     quitting = True
 
 
+def register_key(key, func=None, args=[]):
+    """
+    *register_key* registers a key and ties it to a function to execute. The
+    key is either a one-letter string or a key constant from the curses
+    library.
+    If no args are provided, it means it will call a function with only the
+    clipboard contents as an argument and replacing the clipboard with the
+    return value from the function (see *execute_function*). If None is passed
+    as *args*, the function is merely executed without any arguments and
+    nothing else happens.
+    *register_key* with only a key as an argument will unregister that key.
+    """
+    global registered_keys
+    if type(key) == str:
+        key = ord(key)
+    if not func:
+        del registered_keys[key]
+        return
+    registered_keys[key] = (func, args)
+
+
 def execute_function(tuple):
     """
-    Execute a given function.
+    *execute_function* takes a tuple with the function and a list of arguments
+    to be passed to it. It will add the contents of the clipboard in front of
+    the other arguments. If it is passed a string as an argument, it will
+    convert it to a single-item list. The return value from the function will
+    replace the contents of the clipboard.
     """
     global displayed, offset_in_clip
     if not tuple:
@@ -198,9 +250,13 @@ def execute_function(tuple):
         redraw()
 
 
-def handle_resize(signum, frame):
+def handle_resize(signum=None, frame=None):
     """
-    *handle_resize* is used for handling a terminal resize.
+    *handle_resize* handles a terminal resize event. Linux and Mac have a
+    signal for that (SIGWINCH), on windows one has to wait for *KEY_RESIZE*
+    in a curses *getch* loop. I couldn't get these to come unless I was writing
+    to the screen continuously, so this prefers the signal if it's available
+    and sets SIGWINCH_works to make sure we don't also parse the KEY_RESIZE.
     """
     global SIGWINCH_works, screen, bottom, offset_in_clip
     if signum or frame:
@@ -216,7 +272,9 @@ def handle_resize(signum, frame):
 
 def redraw():
     """
-    *redraw* redraws the screen.
+    *redraw* redraws the displayed clippings and the cursor. It checks whether
+    the *displayed* variable point to *saved_clips* to see if it needs to draw
+    the 'Saved Clippings' header at the top line.
     """
     global width
     screen.clear()
@@ -251,7 +309,7 @@ def redraw():
 
 def up():
     """
-    *up* moves a selected item up in the list of clips.
+    *up* moves the cursor up in the list of clips, scrolling if necessary.
     """
     global selected, bottom, offset_in_clip
     if selected < len(displayed) - 1:
@@ -268,7 +326,7 @@ def up():
 
 def down():
     """
-    *down* moves a selected item down in the list of clips.
+    *down* moves the cursor down in the list of clips, scrolling if necessary.
     """
     global selected, bottom, offset_in_clip
     if selected > 0:
@@ -282,7 +340,7 @@ def down():
 
 def scroll_left():
     """
-    *scroll_left* scrolls the text for an item left.
+    *scroll_left* scrolls left in the text for the selected item.
     """
     global offset_in_clip
     offset_in_clip -= width
@@ -292,7 +350,7 @@ def scroll_left():
 
 def scroll_right():
     """
-    *scroll_right* scrolls the text for an item left.
+    *scroll_right* scrolls right in the text for the selected item.
     """
     global offset_in_clip
     offset_in_clip += width
@@ -303,7 +361,8 @@ def scroll_right():
 
 def move_down():
     """
-    *move_down* moves an item down.
+    *move_down* moves an item down the list by swapping it with the item below
+    and making that the current item.
     """
     global selected
     if pastes is displayed:
@@ -317,7 +376,8 @@ def move_down():
 
 def move_up():
     """
-    *move_up* moves an item up.
+    *move_up* moves an item up the list by swapping it with the item below
+    and making that the current item.
     """
     global has_upped, selected
     if pastes is displayed:
@@ -334,9 +394,25 @@ def move_up():
         redraw()
 
 
+def delete_clip():
+    """
+    *delete_clip* does what it says on the label, it deletes the current clip
+    in the current view.
+    """
+    global selected
+    if len(displayed) > 1:
+        del displayed[selected]
+        if selected >= len(displayed):
+            selected -= 1
+            selected = max(0, selected)
+        else:
+            displayed[0] = ""
+        redraw()
+
+
 def toggle_saved():
     """
-    *toggle_saved* toggles saving to disk.
+    *toggle_saved* switches between the clipboard and the saved clips screens.
     """
     global selected, bottom, has_upped, offset_in_clip, displayed
     if saved_clips is displayed:
@@ -354,29 +430,20 @@ def toggle_saved():
 
 def copy_to_clipboard(s):
     """
-    *copy_to_clipboard* copies to the clipboard.
+    *copy_to_clipboard* copies to the clipboard. By setting the *compare*
+    global variable, it makes sure klipz doesn't capture it again.
     """
     global compare
     pyperclip.copy(s)
     compare = s
 
 
-def register_key(key, func=None, args=[]):
-    """
-    *register_key* registers a hotkey to a function.
-    """
-    global registered_keys
-    if type(key) == str:
-        key = ord(key)
-    if not func:
-        del registered_keys[key]
-        return
-    registered_keys[key] = (func, args)
-
-
 def pass_as_tempfile(clip, command_and_args):
     """
-    *pass_as_tempfile* passes a tempfile.
+    *pass_as_tempfile* will put the clipboard contents in a tempfile, the name
+    of which is added as last argument to the provided command and arguments.
+    It will then execute the command and put the contents of the tempfile
+    back on the clipboard afterwards.
     """
     global screen
     curses.endwin()
@@ -393,7 +460,9 @@ def pass_as_tempfile(clip, command_and_args):
 
 def pipe_through(clip, command_and_args):
     """
-    *pipe_through* pipes *clip* through *command_and_args*.
+    *pipe_through* pipes *clip* through *command_and_args*, which can be a
+    string that is passed to the shell. If it is a list, any arguments after
+    the first one are arguments to the shell, not to the command.
     """
     if type(command_and_args) == str:
         command_and_args = [command_and_args]
@@ -415,23 +484,14 @@ def call_editor(clip):
 
 def cutcrlf(clip):
     """
-    *cutcrlf* edits *clip* to remove CRLF.
+    *cutcrlf* edits *clip* to remove CR or LF characters from the beginning and
+    end of the clip, but only if the --leavecrlf command line option was not
+    specified.
     """
     if not cmdline.leavecrlf:
         clip = re.sub("^[\r\n]+", "", clip)
         clip = re.sub("[\r\n]+$", "", clip)
     return clip
-
-
-def client(ip, port, message):
-    """
-    *client* is for later.
-    """
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.connect((ip, port))
-        sock.sendall(bytes(message, "ascii"))
-        response = str(sock.recv(1024), "ascii")
-        print("Received: {}".format(response))
 
 
 if __name__ == "__main__":
