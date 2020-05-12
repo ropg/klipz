@@ -87,9 +87,9 @@ register_key("n", normalize)
 register_key("S", pipe_through, "sort | uniq")
 ```
 
-As you can you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces. The function takes a string and returns the modified version.
+As you can you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces, and hyphens become minus signs. The function takes a string and returns the modified version.
 
-`register_key` takes as arguments the keystroke, the function that is called and any arguments. The current clipping is inserted as first argument and the return value replaces the clipping. If you pass `None` as arguments, klipz will simply call the specified function without any arguments and the return value will be ignored. If you pass `None` as function, that mapping for the specified key is deleted.
+`register_key` takes as arguments the keystroke, the function that is called with the supplied arguments. The current clipping is inserted as the first argument before any of the ones supplied and the return value replaces the clipping. If you pass `None` as arguments, klipz will simply call the specified function without any arguments and the return value will be ignored. If you pass `None` as function, that mapping for the specified key is deleted.
 
 Keystrokes can be specified a one character string such as 'x' (or 'X' for Shift-X) or special values starting with `curses.`, followed by one of the Key Constants listed [here](https://docs.python.org/3/library/curses.html#constants). So `curses.KEY_HOME` would be used to tie an action to the `Home` key.
 

@@ -6,7 +6,7 @@ with open('README.md', encoding="utf-8") as f:
 
 setup(
     name="klipz",
-    version="0.1.6",
+    version="0.2.0",
     description="Clipboard manager using curses",
     long_description=readme,
     url="https://github.com/ropg/klipz",
