@@ -405,9 +405,9 @@ def delete_clip():
         if selected >= len(displayed):
             selected -= 1
             selected = max(0, selected)
-        else:
-            displayed[0] = ""
-        redraw()
+    else:
+        displayed[0] = ""
+    redraw()
 
 
 def toggle_saved():
