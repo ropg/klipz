@@ -204,6 +204,8 @@ def _quit(signum=None, frame=None):
     """
     global quitting
     quitting = True
+    if saved_clips is displayed:
+        saved_to_disk()
 
 
 def register_key(key, func=None, args=[]):
