@@ -48,15 +48,18 @@ def command_line_arguments():
     ap = argparse.ArgumentParser()
     ap.add_argument("--version", "-v", help="Print version number and exit.",
                     action="store_true")
-    ap.add_argument("--configdir", "-c", help="Location of the klipz config" +
-                    "directory.", default="~/.klipz")
-    ap.add_argument("--leavecrlf", help="By default, klipz removes beginning" +
-                    "and ending carriage returns " +
-                    "and line feeds from the beginning and ending of all" +
-                    "clips. Use this option if you do not want that.",
+    ap.add_argument("--configdir", "-c", help="By default, .klipz expects its "
+                    "config.py in ~/.klipz, but this can be set with this "
+                    "option. This is also where the saved_clips file is "
+                    "stored.", default="~/.klipz")
+    ap.add_argument("--leavecrlf", help="By default, klipz removes beginning "
+                    "and ending carriage returns and line feeds from the "
+                    "beginning and ending of all clips. Use this option if "
+                    "you do not want that.",
                     action="store_true")
     ap.add_argument("--scrollback", "-s",
-                    help="Number of clips in scrollback buffer.", type=int,
+                    help="Number of clips in scrollback buffer. By default, "
+                    "klipz will show up to 100 clippings.", type=int,
                     default=100)
     return ap
 
@@ -216,9 +219,9 @@ def register_key(key, func=None, args=[]):
     *register_key* with only a key as an argument will unregister that key.
     """
     global registered_keys
-    if type(key) == str:
+    if isinstance(key, str):
         key = ord(key)
-    if not func:
+    if not func and registered_keys.get(key):
         del registered_keys[key]
         return
     registered_keys[key] = (func, args)
@@ -464,7 +467,7 @@ def pipe_through(clip, command_and_args):
     string that is passed to the shell. If it is a list, any arguments after
     the first one are arguments to the shell, not to the command.
     """
-    if type(command_and_args) == str:
+    if isinstance(command_and_args, str):
         command_and_args = [command_and_args]
     p = subprocess.Popen(command_and_args, stdout=subprocess.PIPE,
                          stdin=subprocess.PIPE, shell=True)

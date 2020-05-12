@@ -8,7 +8,7 @@
 
 ## Installation
 
-klipz is on [PyPI](https://pypi.org/project/klipz), so installing is easy: 
+klipz is a python package on [PyPI](https://pypi.org/project/klipz), so if you have python 3 installing is easy: 
 
 ```
 pip install klipz
@@ -26,7 +26,7 @@ pip install .
 
 ### Scrolling back in clipboard
 
-On the command line, enter `klipz`. Your terminal window now goes blank except the bottom line shows the current contents of the clipboard on a line that shows as a bar with foreground and background colors swapped (so white on bloack if your terminal window is black on white). `klipz` uses one line per clipping so it may not show the whole clipboard. Use the left and right arrows to see the rest.
+On the command line, enter `klipz`. Your terminal window now goes blank except the bottom line shows the current contents of the clipboard on a line that shows as a bar with foreground and background colors swapped (so white on bloack if your terminal window is black on white). klipz uses one line per clipping so it may not show the whole clipboard. Use the left and right arrows to see the rest.
 
 At this point you probably want to shrink the terminal window to something like 10 lines by 60 characters and set the font a little smaller (using *Ctrl - minus* or *⌘ - minus** in many cases). Simply put the window in the bottom corner of your screen and copy a few more text clippings from a webpage or somewhere else. As you can see the past clippings scroll up.
 
@@ -46,4 +46,51 @@ Saved clippings are saved to disk, so they will reappear when you start klipz ag
 
 * If you have the `EDITOR` environment variable set to your favorite editor, you can press 'e' on a clipping.
 
-* On MacOS, you can leave your cursor wherever you are typing, move the mouse pointer to the clips window and scroll with two fingers on trackpad to move the cursor. No need to click to bring the klipz window in focus.
+* On MacOS, you can leave your cursor wherever you are typing, move the mouse pointer to the clips window and scroll with two fingers on the trackpad to move the cursor. No need to click to bring the klipz window in focus.
+
+### Configuration
+
+klipz has a few command line options
+
+```
+$ klipz -h
+usage: klipz [-h] [--version] [--configdir CONFIGDIR] [--leavecrlf]
+             [--scrollback SCROLLBACK]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version, -v         Print version number and exit.
+  --configdir CONFIGDIR, -c CONFIGDIR
+                        By default, .klipz expects its config.py in ~/.klipz,
+                        but this can be set with this option. This is also
+                        where the saved_clips file is stored.
+  --leavecrlf           By default, klipz removes beginning and ending
+                        carriage returns and line feeds from the beginning and
+                        ending of all clips. Use this option if you do not
+                        want that.
+  --scrollback SCROLLBACK, -s SCROLLBACK
+                        Number of clips in scrollback buffer. By default,
+                        klipz will show up to 100 clippings.
+```
+
+klipz can be further configured with a file called `config.py` and placed in the config directory, (default `~/.klipz`). Here's what my `config.py` contains:
+
+```
+def normalize(s):
+    s = re.sub('[«»„“‟”❝❞〝〞〟＂]', '"', s)
+    s = re.sub('[‹›’‚‘‛❛❜]', "'", s)
+    s = s.replace('—', '-')
+    s = s.replace('\n', '  ')
+    return s
+
+register_key("n", normalize)
+register_key("S", pipe_through, "sort | uniq")
+```
+
+As you can you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces. The function takes a string and returns the modified version.
+
+`register_key` takes as arguments the keystroke, the function that is called and any arguments. The current clipping is inserted as first argument and the return value replaces the clipping. If you pass `None` as arguments, klipz will simply call the specified function without any arguments and the return value will be ignored. If you pass `None` as function, that mapping for the specified key is deleted.
+
+Keystrokes can be specified a one character string such as 'x' (or 'X' for Shift-X) or special values starting with `curses.`, followed by one of the Key Constants listed [here](https://docs.python.org/3/library/curses.html#constants). So `curses.KEY_HOME` would be used to tie an action to the `Home` key.
+
+As you can see the Shift-S combination uses a built-in function called `pipe_through` which will pipe the contents of the selected clipping through the commands specified and put the result back in the clipping. There is also a function called `pass_as_tempfile`. It is also used internally to start the editor when you press 'e', and will add the name of the temporary file as the last argument. 
