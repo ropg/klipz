@@ -9,7 +9,7 @@ setup(
     version="0.2.0",
     description="Clipboard manager using curses",
     long_description=readme,
-    long_description_content_type='text/markdown'
+    long_description_content_type='text/markdown',
     url="https://github.com/ropg/klipz",
     author="Rop Gonggrijp",
     license="MIT",
