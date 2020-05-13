@@ -28,7 +28,7 @@ pip install .
 
 On the command line, enter `klipz`. Your terminal window now goes blank except the bottom line shows the current contents of the clipboard on a line that shows as a bar with foreground and background colors swapped (so white on bloack if your terminal window is black on white). klipz uses one line per clipping so it may not show the whole clipboard. Use the left and right arrows to see the rest.
 
-At this point you probably want to shrink the terminal window to something like 10 lines by 60 characters and set the font a little smaller (using *Ctrl - minus* or *⌘ - minus** in many cases). Simply put the window in the bottom corner of your screen and copy a few more text clippings from a webpage or somewhere else. As you can see the past clippings scroll up.
+At this point you probably want to shrink the terminal window to something like 10 lines by 60 characters and set the font a little smaller (using *Ctrl - minus* or *⌘ - minus* in many cases). Simply put the window in the bottom corner of your screen and copy a few more text clippings from a webpage or somewhere else. As you can see the past clippings scroll up.
 
 To reload a previous clipping, activate the window by clicking on it and scroll up using the up arrow key. If you go back to another application and paste, you'll see that the contents of the clipboard have been replaced to match the selection in klipz.
 
