@@ -17,7 +17,7 @@ setup(
                  "Programming Language :: Python :: 3"],
     keywords="copy, paste, clipboard",
     project_urls={
-        "Documentation": "https://github.com/ropg/klipz/README.md",
+        "Documentation": "https://github.com/ropg/klipz/blob/master/README.md",
         "Source": "https://github.com/ropg/klipz",
         "Tracker": "https://github.com/ropg/klipz/issues",
     },
