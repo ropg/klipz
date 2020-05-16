@@ -26,7 +26,7 @@ pip install .
 
 ### Scrolling back in clipboard
 
-On the command line, enter `klipz`. Your terminal window now goes blank except the bottom line shows the current contents of the clipboard on a line that shows as a bar with foreground and background colors swapped (so white on bloack if your terminal window is black on white). klipz uses one line per clipping so it may not show the whole clipboard. Use the left and right arrows to see the rest.
+On the command line, enter `klipz`. Your terminal window now goes blank except the bottom line shows the current contents of the clipboard on a line that shows as a bar with foreground and background colors swapped (so white on black if your terminal window is black on white). klipz uses one line per clipping so it may not show the whole clipboard. Use the left and right arrows to see the rest.
 
 At this point you probably want to shrink the terminal window to something like 10 lines by 60 characters and set the font a little smaller (using *Ctrl - minus* or *⌘ - minus* in many cases). Simply put the window in the bottom corner of your screen and copy a few more text clippings from a webpage or somewhere else. As you can see the past clippings scroll up.
 
@@ -55,7 +55,7 @@ klipz has a few command line options
 ```
 $ klipz -h
 usage: klipz [-h] [--version] [--configdir CONFIGDIR] [--leavecrlf]
-             [--scrollback SCROLLBACK]
+             [--buffersize BUFFERSIZE] [--savebuffer]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -64,13 +64,17 @@ optional arguments:
                         By default, .klipz expects its config.py in ~/.klipz,
                         but this can be set with this option. This is also
                         where the saved_clips file is stored.
-  --leavecrlf           By default, klipz removes beginning and ending
-                        carriage returns and line feeds from the beginning and
-                        ending of all clips. Use this option if you do not
-                        want that.
-  --scrollback SCROLLBACK, -s SCROLLBACK
+  --leavecrlf, -l       By default, klipz removes beginning and ending
+                        carriage returns and line feeds from the all clips.
+                        Use this option if you do not want that.
+  --buffersize BUFFERSIZE, -b BUFFERSIZE
                         Number of clips in scrollback buffer. By default,
                         klipz will show up to 100 clippings.
+  --savebuffer, -s      Now klipz will save the entire buffer to disk on exit
+                        (with Ctrl-C or because of receiving SIGEXIT). This
+                        buffer will then be reloaded at startup. Please note
+                        that this can be a security risk if you copy and paste
+                        passwords etc, so by default this is turned off.
 ```
 
 klipz can be further configured with a file called `config.py` and placed in the config directory, (default `~/.klipz`). Here's what my `config.py` contains:
@@ -87,7 +91,7 @@ register_key("n", normalize)
 register_key("S", pipe_through, "sort | uniq")
 ```
 
-As you can you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces, and hyphens become minus signs. The function takes a string and returns the modified version.
+As you can see you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces, and hyphens become minus signs. The function takes a string and returns the modified version.
 
 `register_key` takes as arguments the keystroke, the function that is called with the supplied arguments. The current clipping is inserted as the first argument before any of the ones supplied and the return value replaces the clipping. If you pass `None` as arguments, klipz will simply call the specified function without any arguments and the return value will be ignored. If you pass `None` as function, that mapping for the specified key is deleted.
 
