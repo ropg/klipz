@@ -23,14 +23,18 @@ import pyperclip
 
 # consts
 SAVED_HEADER = "Saved Clippings"
+SAVED_FILENAME = "saved_clips"
+BUFFER_FILENAME = "buffer"
+DEFAULT_CONFIG_DIR = "~/.klipz"
+CONFIG_FILENAME = "config.py"
 
 # global vars
 screen = False
 width = 0
-compare = ""
-pastes = [""]
-saved_clips = [""]
-displayed = pastes
+compare = None
+buffer = None
+saved_clips = None
+displayed = None
 selected = 0
 bottom = 0
 has_upped = False
@@ -51,13 +55,12 @@ def command_line_arguments():
     ap.add_argument("--configdir", "-c", help="By default, .klipz expects its "
                     "config.py in ~/.klipz, but this can be set with this "
                     "option. This is also where the saved_clips file is "
-                    "stored.", default="~/.klipz")
-    ap.add_argument("--leavecrlf", help="By default, klipz removes beginning "
-                    "and ending carriage returns and line feeds from the "
-                    "beginning and ending of all clips. Use this option if "
-                    "you do not want that.",
-                    action="store_true")
-    ap.add_argument("--scrollback", "-s",
+                    "stored.", default=DEFAULT_CONFIG_DIR)
+    ap.add_argument("--leavecrlf", "-l", help="By default, klipz removes "
+                    "beginning and ending carriage returns and line feeds "
+                    "from the all clips. Use this option if you do not want "
+                    "that.", action="store_true")
+    ap.add_argument("--buffersize", "-b",
                     help="Number of clips in scrollback buffer. By default, "
                     "klipz will show up to 100 clippings.", type=int,
                     default=100)
@@ -74,7 +77,7 @@ def main():
     """
     Primary klipz entry point
     """
-    global cmdline
+    global cmdline, saved_clips, buffer, displayed, compare
     ap = command_line_arguments()
     cmdline = ap.parse_args()
     if cmdline.version:
@@ -82,7 +85,10 @@ def main():
         sys.exit(0)
     register_default_keys()
     read_config_file()
-    saved_from_disk()
+    saved_clips = from_disk(SAVED_FILENAME)
+    buffer = from_disk(BUFFER_FILENAME)
+    displayed = buffer
+    compare = buffer[0]
     curses.wrapper(worker)
 
 
@@ -105,47 +111,46 @@ def read_config_file():
     """
     Read klipz configuration file.
     """
+    fn = os.path.expanduser(cmdline.configdir + "/" + CONFIG_FILENAME)
     try:
-        exec(open(os.path.expanduser(cmdline.configdir + "/config.py")).read())
+        exec(open(fn).read())
     except FileNotFoundError:
         pass
 
 
-def saved_to_disk():
+def to_disk(tofile, cliplist):
     """
     Write klipz saved clips to disk.
     """
+    fn = os.path.expanduser(cmdline.configdir) + "/" + tofile
     try:
         os.mkdir(os.path.expanduser(cmdline.configdir))
     except FileExistsError:
         pass
     try:
-        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"),
-                  "wb") as f:
-            f.write(repr(saved_clips).encode("utf-8"))
+        with open(fn, "wb") as f:
+            f.write(repr(cliplist).encode("utf-8"))
     except OSError:
         pass
 
 
-def saved_from_disk():
+def from_disk(fromfile):
     """
     Load saved klipz clips from disk.
     """
-    global saved_clips
+    fn = os.path.expanduser(cmdline.configdir) + "/" + fromfile
     try:
-        with open(os.path.expanduser(cmdline.configdir + "/saved_clips"),
-                  "rb") as f:
-            del saved_clips[:]
-            saved_clips.extend(ast.literal_eval(f.read().decode("utf-8")))
+        with open(fn, "rb") as f:
+            return ast.literal_eval(f.read().decode("utf-8"))
     except OSError:
-        pass
+        return [""]
 
 
 def worker(scr):
     """
     Primary klipz worker loop.
     """
-    global compare, displayed, selected, screen
+    global screen
     screen = scr
     curses.use_default_colors()
     screen.timeout(0)
@@ -181,7 +186,7 @@ def poll_clipboard():
     """
     Will get the paste buffer, clip off and cr's and lf's if needed and
     compare it to the global *compare* variable to see if we've seen it.
-    If not, store it in *pastes*, first switching back to the clipboard view
+    If not, store it in *buffer*, first switching back to the clipboard view
     if we were in "Saved Clippings" view. Also manages maximum buffer size.
     """
     global selected, compare
@@ -194,9 +199,12 @@ def poll_clipboard():
     if p != compare:
         if saved_clips is displayed:
             toggle_saved()
-        pastes.insert(0, p)
-        if len(pastes) >= cmdline.scrollback:
-            pastes.pop(-1)
+        if buffer[0] == "":
+            buffer[0] = p
+        else:
+            buffer.insert(0, p)
+        if len(buffer) >= cmdline.buffersize:
+            buffer.pop(-1)
         selected = 0
         compare = p
         redraw()
@@ -211,7 +219,7 @@ def _quit(signum=None, frame=None):
     global quitting
     quitting = True
     if saved_clips is displayed:
-        saved_to_disk()
+        to_disk(SAVED_FILENAME, saved_clips)
     if cmdline.savebuffer:
         to_disk(BUFFER_FILENAME, buffer)
 
@@ -291,7 +299,7 @@ def redraw():
     """
     global width
     screen.clear()
-    width = curses.COLS - 1
+    width = curses.COLS
     index = curses.LINES + bottom
     if saved_clips is displayed:
         screen.addstr(0, 0, " " * width, curses.A_REVERSE)
@@ -302,17 +310,18 @@ def redraw():
         index -= 1
         if index >= len(displayed):
             continue
-        disp = displayed[index].replace("\n", "↵")
+        disp = displayed[index].replace("\n", "↵").replace("\t", "⇥")
         current_line = curses.LINES - 1 - index + bottom
         cursor_state = curses.A_NORMAL
         if index == selected:
             disp = disp[offset_in_clip:]
             cursor_state = curses.A_REVERSE
-            screen.addnstr(current_line, 0, " " * width, width, cursor_state)
+#            screen.addnstr(current_line, 0, " " * width, width, cursor_state)
         try:
             # May throw exception and even wrap ugly on non-fixed-width chars
             # (e.g. emoticons).  Since we do not control terminal or font there
             # is simply nothing we can do about it.
+            disp += " " * width
             screen.addnstr(current_line, 0, disp, width, cursor_state)
         except:
             pass
@@ -378,7 +387,7 @@ def move_down():
     and making that the current item.
     """
     global selected
-    if pastes is displayed:
+    if buffer is displayed:
         return
     if selected > 0:
         saved_clips[selected - 1], saved_clips[selected] = \
@@ -393,7 +402,7 @@ def move_up():
     and making that the current item.
     """
     global has_upped, selected
-    if pastes is displayed:
+    if buffer is displayed:
         return
     if selected == 0 and not has_upped:
         has_upped = True
@@ -413,13 +422,13 @@ def delete_clip():
     in the current view.
     """
     global selected
-    if len(displayed) > 1:
+    if (saved_clips is displayed and selected == 0) or len(displayed) == 1:
+        displayed[0] = ""
+    else:
         del displayed[selected]
         if selected >= len(displayed):
             selected -= 1
             selected = max(0, selected)
-    else:
-        displayed[0] = ""
     redraw()
 
 
@@ -429,12 +438,12 @@ def toggle_saved():
     """
     global selected, bottom, has_upped, offset_in_clip, displayed
     if saved_clips is displayed:
-        saved_to_disk()
-        displayed = pastes
+        to_disk(SAVED_FILENAME, saved_clips)
+        displayed = buffer
     else:
         displayed = saved_clips
         has_upped = False
-        saved_clips[0] = pastes[selected]
+        saved_clips[0] = buffer[selected]
     selected = 0
     offset_in_clip = 0
     bottom = 0
