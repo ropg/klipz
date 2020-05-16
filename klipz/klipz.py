@@ -61,6 +61,12 @@ def command_line_arguments():
                     help="Number of clips in scrollback buffer. By default, "
                     "klipz will show up to 100 clippings.", type=int,
                     default=100)
+    ap.add_argument("--savebuffer", "-s", help="Now klipz will save the "
+                    "entire buffer to disk on exit (with Ctrl-C or because "
+                    "of receiving SIGEXIT). This buffer will then be reloaded "
+                    "at startup. Please note that this can be a security risk "
+                    "if you copy and paste passwords etc, so by default this "
+                    "is turned off.", action="store_true"),
     return ap
 
 
@@ -206,6 +212,8 @@ def _quit(signum=None, frame=None):
     quitting = True
     if saved_clips is displayed:
         saved_to_disk()
+    if cmdline.savebuffer:
+        to_disk(BUFFER_FILENAME, buffer)
 
 
 def register_key(key, func=None, args=[]):
