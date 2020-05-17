@@ -6,7 +6,7 @@ with open('README.md', encoding="utf-8") as f:
 
 setup(
     name="klipz",
-    version="0.2.1",
+    version="0.2.2",
     description="Clipboard manager using curses",
     long_description=readme,
     long_description_content_type='text/markdown',
