@@ -10,13 +10,13 @@
 
 klipz is a python package on [PyPI](https://pypi.org/project/klipz), so if you have python 3 installing is easy: 
 
-```
+```bash
 pip install klipz
 ```
 
 Alternatively, you can clone the github repository and install from there:
 
-```
+```bash
 git clone https://github.com/ropg/klipz
 cd klipz
 pip install .
