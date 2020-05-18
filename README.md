@@ -79,7 +79,7 @@ optional arguments:
 
 klipz can be further configured with a file called `config.py` and placed in the config directory, (default `~/.klipz`). Here's what my `config.py` contains:
 
-```
+```py
 def normalize(s):
     s = re.sub('[«»„“‟”❝❞〝〞〟＂]', '"', s)
     s = re.sub('[‹›’‚‘‛❛❜]', "'", s)
