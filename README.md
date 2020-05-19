@@ -10,13 +10,13 @@
 
 klipz is a python package on [PyPI](https://pypi.org/project/klipz), so if you have python 3 installing is easy: 
 
-```
+```bash
 pip install klipz
 ```
 
 Alternatively, you can clone the github repository and install from there:
 
-```
+```bash
 git clone https://github.com/ropg/klipz
 cd klipz
 pip install .
@@ -79,7 +79,7 @@ optional arguments:
 
 klipz can be further configured with a file called `config.py` and placed in the config directory, (default `~/.klipz`). Here's what my `config.py` contains:
 
-```
+```py
 def normalize(s):
     s = re.sub('[«»„“‟”❝❞〝〞〟＂]', '"', s)
     s = re.sub('[‹›’‚‘‛❛❜]', "'", s)
