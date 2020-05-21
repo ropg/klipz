@@ -114,7 +114,7 @@ def read_config_file():
     """
     fn = os.path.expanduser(cmdline.configdir + "/" + CONFIG_FILENAME)
     try:
-        exec(open(fn).read())
+        exec(open(fn).read(), globals())
     except FileNotFoundError:
         pass
 
