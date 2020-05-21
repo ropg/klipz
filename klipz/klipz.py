@@ -27,6 +27,7 @@ SAVED_FILENAME = "saved_clips"
 BUFFER_FILENAME = "buffer"
 DEFAULT_CONFIG_DIR = "~/.klipz"
 CONFIG_FILENAME = "config.py"
+ALWAYS = 1000
 
 # global vars
 screen = False
@@ -188,6 +189,8 @@ def poll_clipboard():
     compare it to the global *compare* variable to see if we've seen it.
     If not, store it in *buffer*, first switching back to the clipboard view
     if we were in "Saved Clippings" view. Also manages maximum buffer size.
+    It also executes the function associated with special key ``ALWAYS``, which
+    can be tied to a function that always executes for a new clipping.
     """
     global selected, compare
     p = pyperclip.paste()
@@ -207,6 +210,7 @@ def poll_clipboard():
             buffer.pop(-1)
         selected = 0
         compare = p
+        execute_function(registered_keys.get(ALWAYS))
         redraw()
 
 
