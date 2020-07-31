@@ -55,7 +55,7 @@ klipz has a few command line options
 ```
 $ klipz -h
 usage: klipz [-h] [--version] [--configdir CONFIGDIR] [--leavecrlf]
-             [--buffersize BUFFERSIZE] [--savebuffer]
+             [--buffersize BUFFERSIZE]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -70,11 +70,6 @@ optional arguments:
   --buffersize BUFFERSIZE, -b BUFFERSIZE
                         Number of clips in scrollback buffer. By default,
                         klipz will show up to 100 clippings.
-  --savebuffer, -s      Now klipz will save the entire buffer to disk on exit
-                        (with Ctrl-C or because of receiving SIGEXIT). This
-                        buffer will then be reloaded at startup. Please note
-                        that this can be a security risk if you copy and paste
-                        passwords etc, so by default this is turned off.
 ```
 
 klipz can be further configured with a file called `config.py` and placed in the config directory, (default `~/.klipz`). Here's what my `config.py` contains:
@@ -83,15 +78,17 @@ klipz can be further configured with a file called `config.py` and placed in the
 def normalize(s):
     s = re.sub('[«»„“‟”❝❞〝〞〟＂]', '"', s)
     s = re.sub('[‹›’‚‘‛❛❜]', "'", s)
-    s = s.replace('—', '-')
-    s = s.replace('\n', '  ')
+    s = re.sub('[—–]', '-', s)
+    s = s \
+      .replace('…', '...') \
+      .replace('\n', '  ')
     return s
 
 register_key("n", normalize)
 register_key("S", pipe_through, "sort | uniq")
 ```
 
-As you can see you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces, and hyphens become minus signs. The function takes a string and returns the modified version.
+As you can see you can write regular python here. The function `normalize` does something that I need frequently: it removes all the funny unicode opening and closing quotes and replaces them by either a single or a double straight quote, while also removing any newlines and replacing them with two spaces, hyphens become minus signs and elipsis become three periods. The function takes a string and returns the modified version.
 
 `register_key` takes as arguments the keystroke, the function that is called with the supplied arguments. The current clipping is inserted as the first argument before any of the ones supplied and the return value replaces the clipping. If you pass `None` as arguments, klipz will simply call the specified function without any arguments and the return value will be ignored. If you pass `None` as function, that mapping for the specified key is deleted.
 

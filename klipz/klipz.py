@@ -65,12 +65,6 @@ def command_line_arguments():
                     help="Number of clips in scrollback buffer. By default, "
                     "klipz will show up to 100 clippings.", type=int,
                     default=100)
-    ap.add_argument("--savebuffer", "-s", help="Now klipz will save the "
-                    "entire buffer to disk on exit (with Ctrl-C or because "
-                    "of receiving SIGEXIT). This buffer will then be reloaded "
-                    "at startup. Please note that this can be a security risk "
-                    "if you copy and paste passwords etc, so by default this "
-                    "is turned off.", action="store_true"),
     return ap
 
 
@@ -98,14 +92,14 @@ def register_default_keys():
     Register map of keys to functions.
     """
     register_key("e", call_editor)
-    register_key("s", toggle_saved, None)
-    register_key("u", move_up, None)
-    register_key("d", move_down, None)
-    register_key("c", delete_clip, None)
-    register_key(curses.KEY_UP, up, None)
-    register_key(curses.KEY_DOWN, down, None)
-    register_key(curses.KEY_LEFT, scroll_left, None)
-    register_key(curses.KEY_RIGHT, scroll_right, None)
+    register_key("s", toggle_saved)
+    register_key("u", move_up)
+    register_key("d", move_down)
+    register_key("c", delete_clip)
+    register_key(curses.KEY_UP, up)
+    register_key(curses.KEY_DOWN, down)
+    register_key(curses.KEY_LEFT, scroll_left)
+    register_key(curses.KEY_RIGHT, scroll_right)
 
 
 def read_config_file():
@@ -175,12 +169,20 @@ def poll_keys():
     execute_function will just return if it gets that, so this needs not care
     if the key exists or not.
     """
+    global compare
     key = 0
     while key != -1:
         key = screen.getch()
         if key == curses.KEY_RESIZE and not SIGWINCH_works:
             handle_resize()
-        execute_function(registered_keys.get(key))
+        clip = displayed[selected]
+        clip = execute_function(key, clip)
+        if clip:
+            displayed[selected] = clip
+            pyperclip.copy(clip)
+            compare = clip
+            offset_in_clip = 0
+        redraw()
 
 
 def poll_clipboard():
@@ -194,24 +196,27 @@ def poll_clipboard():
     """
     global selected, compare
     p = pyperclip.paste()
-    if not p:
+    if not p or p == compare:
         return
-    if p != cutcrlf(p):
-        p = cutcrlf(p)
+    p = cutcrlf(p)
+    ret = execute_function(ALWAYS, p)
+    if ret:
+        p = ret
+    if p != pyperclip.paste():
         pyperclip.copy(p)
-    if p != compare:
-        if saved_clips is displayed:
-            toggle_saved()
-        if buffer[0] == "":
-            buffer[0] = p
-        else:
-            buffer.insert(0, p)
-        if len(buffer) >= cmdline.buffersize:
-            buffer.pop(-1)
-        selected = 0
-        compare = p
-        execute_function(registered_keys.get(ALWAYS))
-        redraw()
+    if saved_clips is displayed:
+        toggle_saved()
+    if buffer[0] == "":
+        buffer[0] = p
+    else:
+        buffer.insert(0, p)
+    if len(buffer) >= cmdline.buffersize:
+        buffer.pop(-1)
+    selected = 0
+    compare = p
+    buffer[0] = p
+    offset_in_clip = 0
+    redraw()
 
 
 def _quit(signum=None, frame=None):
@@ -224,11 +229,9 @@ def _quit(signum=None, frame=None):
     quitting = True
     if saved_clips is displayed:
         to_disk(SAVED_FILENAME, saved_clips)
-    if cmdline.savebuffer:
-        to_disk(BUFFER_FILENAME, buffer)
 
 
-def register_key(key, func=None, args=[]):
+def register_key(key, func=None, args=None):
     """
     *register_key* registers a key and ties it to a function to execute. The
     key is either a one-letter string or a key constant from the curses
@@ -246,33 +249,28 @@ def register_key(key, func=None, args=[]):
     if not func and registered_keys.get(key):
         del registered_keys[key]
         return
+    if not args:
+        args = []
     registered_keys[key] = (func, args)
 
 
-def execute_function(tuple):
+def execute_function(key, clip):
     """
-    *execute_function* takes a tuple with the function and a list of arguments
-    to be passed to it. It will add the contents of the clipboard in front of
-    the other arguments. If it is passed a string as an argument, it will
-    convert it to a single-item list. The return value from the function will
-    replace the contents of the clipboard.
+    *execute_function* gets the current clip and a key value and then sees if
+    there is a function registered for that key. If there is it executes. If
+    the function returns a string this string is returned, otherwise None.
     """
-    global displayed, offset_in_clip
-    if not tuple:
+    lookup = registered_keys.get(key)
+    if not lookup:
         return
-    (func, args) = tuple
-    if args is None:
-        func()
-    else:
-        if type(args) == str:
-            args = [args]
-        args.insert(0, displayed[selected])
-        clip = cutcrlf(func(*args))
-        args.pop(0)
-        displayed[selected] = clip
-        copy_to_clipboard(clip)
-        offset_in_clip = 0
-        redraw()
+    (func, args) = lookup
+    args = args[:]      # decouple from the list kept in registered_keys
+    if type(args) == str:
+        args = [args]
+    args.insert(0, clip)
+    returned = func(*args)
+    if type(returned) == str:
+        return cutcrlf(returned)
 
 
 def handle_resize(signum=None, frame=None):
@@ -333,7 +331,7 @@ def redraw():
     screen.refresh()
 
 
-def up():
+def up(clip=None):
     """
     *up* moves the cursor up in the list of clips, scrolling if necessary.
     """
@@ -350,7 +348,7 @@ def up():
         redraw()
 
 
-def down():
+def down(clip=None):
     """
     *down* moves the cursor down in the list of clips, scrolling if necessary.
     """
@@ -364,7 +362,7 @@ def down():
         redraw()
 
 
-def scroll_left():
+def scroll_left(clip=None):
     """
     *scroll_left* scrolls left in the text for the selected item.
     """
@@ -374,7 +372,7 @@ def scroll_left():
     redraw()
 
 
-def scroll_right():
+def scroll_right(clip=None):
     """
     *scroll_right* scrolls right in the text for the selected item.
     """
@@ -385,7 +383,7 @@ def scroll_right():
     redraw()
 
 
-def move_down():
+def move_down(clip=None):
     """
     *move_down* moves an item down the list by swapping it with the item below
     and making that the current item.
@@ -400,7 +398,7 @@ def move_down():
         redraw()
 
 
-def move_up():
+def move_up(clip=None):
     """
     *move_up* moves an item up the list by swapping it with the item below
     and making that the current item.
@@ -420,7 +418,7 @@ def move_up():
         redraw()
 
 
-def delete_clip():
+def delete_clip(clip=None):
     """
     *delete_clip* does what it says on the label, it deletes the current clip
     in the current view.
@@ -436,7 +434,7 @@ def delete_clip():
     redraw()
 
 
-def toggle_saved():
+def toggle_saved(clip=None):
     """
     *toggle_saved* switches between the clipboard and the saved clips screens.
     """
