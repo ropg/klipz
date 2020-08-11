@@ -169,7 +169,7 @@ def poll_keys():
     execute_function will just return if it gets that, so this needs not care
     if the key exists or not.
     """
-    global compare
+    global compare, offset_in_clip
     key = 0
     while key != -1:
         key = screen.getch()
@@ -179,8 +179,7 @@ def poll_keys():
         clip = execute_function(key, clip)
         if clip:
             displayed[selected] = clip
-            pyperclip.copy(clip)
-            compare = clip
+            copy_to_clipboard(clip)
             offset_in_clip = 0
         redraw()
 
@@ -194,7 +193,7 @@ def poll_clipboard():
     It also executes the function associated with special key ``ALWAYS``, which
     can be tied to a function that always executes for a new clipping.
     """
-    global selected, compare
+    global selected, compare, offset_in_clip
     p = pyperclip.paste()
     if not p or p == compare:
         return
